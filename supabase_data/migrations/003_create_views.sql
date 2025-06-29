@@ -65,24 +65,7 @@ LEFT JOIN event_vote_statistics evs ON
 WHERE ed.event_id = et.event_id
 ORDER BY ed.column_order, et.row_order;
 
--- 候補日時スロット（日付×時刻の組み合わせ）- ビューとして実装
-CREATE VIEW time_slots AS
-SELECT 
-  ed.event_id,
-  ed.id as event_date_id,
-  et.id as event_time_id,
-  ed.date_label,
-  ed.column_order,
-  et.time_label,
-  et.row_order,
-  CONCAT(ed.id, '-', et.id) as slot_key -- 一意識別子
-FROM event_dates ed
-CROSS JOIN event_times et
-WHERE ed.event_id = et.event_id;
-
--- 集計用マテリアライズドビュー（高速な投票結果表示）
--- Note: Supabaseでマテリアライズドビューが制限されている場合は通常のビューに変更
-CREATE VIEW event_vote_statistics AS
+-- (Removed duplicate definitions of views `time_slots` and `event_vote_statistics` starting at line 69)
 SELECT 
   v.event_id,
   v.event_date_id,
