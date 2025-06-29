@@ -3,7 +3,7 @@ import { format } from "path";
 /**
  * Dateオブジェクトを 'YYYY-MM-DD' 形式の文字列にフォーマットする
  * @param date - フォーマットするDateオブジェクト
- * @returns ''YYYY-MM-DD' 形式の文字列
+ * @returns 'YYYY-MM-DD' 形式の文字列
  */
 export function formatDate(date: Date): string {
   const year = date.getFullYear();

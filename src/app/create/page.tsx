@@ -2,9 +2,14 @@
 import { handleClientScriptLoad } from "next/script";
 import { useState, useEffect } from "react";
 import { formatDate , createDateArray,createTimeArray } from "@/utils/format/times";
+import { createEvent } from "./actions";
+import { useRouter } from "next/navigation";
+import { type EventData ,type TimeData,type DateData } from "./actions";
 
 
-export default function createEvent() {
+export default function createEventPage() {
+  
+  const router = useRouter(); // useRouterフックを追加
   
   const start_day = new Date();
   const end_day = new Date();
@@ -83,6 +88,53 @@ export default function createEvent() {
     setCols(newCols);
   };
 
+  const handleCreate = async () => {
+    
+    try {
+      // 基本情報の検証
+      if (!title.trim()) {
+        alert('タイトルを入力してください');
+        return;
+      }
+
+      // 入力データを整理（空文字列を除去）
+      const filteredDates = cols.filter(date => date.trim() !== '');
+      const filteredTimes = rows.filter(time => time.trim() !== '');
+
+      if (filteredDates.length === 0 || filteredTimes.length === 0) {
+        alert('候補日と候補時刻を少なくとも1つずつ入力してください');
+        return;
+      }
+
+      const result = await createEvent({
+        eventData: {
+          title,
+          description,
+          creator_id: undefined // Server Actionで自動的に設定される
+        },
+        dates: filteredDates.map(date => ({
+          date_label: date, // 日付のラベル（例: "10-01"）
+          col_order: filteredDates.indexOf(date) + 1 // 列の順序
+        })),
+        times: filteredTimes.map((time, index) => ({
+          time_label: time, // 時間のラベル（例: "09:00"）
+          row_order: index + 1 // 行の順序
+        }))
+      });
+      
+      if (result.success) {
+        router.push(`/${result.eventId}`);
+      } else {
+        throw new Error(result.error || 'イベントの作成に失敗しました');
+      }
+      
+    } catch (error) {
+      console.error('Event creation error:', error);
+      alert(`エラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    } finally {
+    }
+  };
+
 
   return (
     <div>
@@ -91,6 +143,7 @@ export default function createEvent() {
       <input 
         value={title} 
         onChange={(e) => setTitle(e.target.value)}
+        required
       />
       <label>イベント説明</label>
       <textarea 
@@ -121,7 +174,6 @@ export default function createEvent() {
         value={endTime}
         onChange={(e) => setEndTime(e.target.value)}
       />
-      <p>プレビュー</p>
       <table>
         <thead>
           <tr>
@@ -162,7 +214,10 @@ export default function createEvent() {
           ))}
         </tbody>
       </table>
-      <button>
+      <p>プレビュー</p>
+      <button
+        onClick={handleCreate}   >
+        イベントを作成
       </button>
     </div>
   );
