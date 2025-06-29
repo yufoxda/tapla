@@ -139,37 +139,43 @@ export default function createEventPage() {
   return (
     <div>
       <h1>イベント作成</h1>
-      <label>イベント名</label>
+      <label htmlFor="event-name">イベント名</label>
       <input 
+        id="event-name"
         value={title} 
         onChange={(e) => setTitle(e.target.value)}
         required
       />
-      <label>イベント説明</label>
+      <label htmlFor="event-description">イベント説明</label>
       <textarea 
+        id="event-description"
         value={description} 
         onChange={(e) => setDescription(e.target.value)}
       />
-      <label>開始日</label>
+      <label htmlFor="start-date">開始日</label>
       <input 
+        id="start-date"
         type="date" 
         value={startDate}
         onChange={(e) => setStartDate(e.target.value)}
       />
-      <label>終了日</label>
+      <label htmlFor="end-date">終了日</label>
       <input 
+        id="end-date"
         type="date" 
         value={endDate}
         onChange={(e) => setEndDate(e.target.value)}
       />
-      <label>開始時刻</label>
+      <label htmlFor="start-time">開始時刻</label>
       <input 
+        id="start-time"
         type="time" 
         value={startTime}
         onChange={(e) => setStartTime(e.target.value)}
       />
-      <label>終了時刻</label>
+      <label htmlFor="end-time">終了時刻</label>
       <input 
+        id="end-time"
         type="time" 
         value={endTime}
         onChange={(e) => setEndTime(e.target.value)}
