@@ -1,7 +1,8 @@
 import {fetchEvent } from './actions';
 
-export default async function ConfirmPage({ params }: { params: { id: string } }) {
-  const result = await fetchEvent(params.id);
+export default async function ConfirmPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const result = await fetchEvent(id);
 
   if (!result.success || !result.data) {
     return (
