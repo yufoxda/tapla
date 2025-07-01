@@ -16,7 +16,7 @@ export async function registerEvent(id: string, userId: string) {
             return { success: false, error: 'Failed to register event' };
         }   
         // 登録成功後、キャッシュを再検証
-        revalidatePath(`/events/${id}/register`);
+        revalidatePath(`/${id}/register`);
         return { success: true, data };
     } catch (error) {
         console.error('Unexpected error in registerEvent:', error);
