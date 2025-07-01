@@ -1,8 +1,11 @@
 import {fetchEvent } from '../actions';
+import { submitEventVote } from './actions';
+import { redirect } from 'next/navigation';
 
 export default async function RegisterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await fetchEvent(id);
+  
   if (!result.success || !result.data) {
     return (
       <div>
@@ -11,14 +14,45 @@ export default async function RegisterPage({ params }: { params: Promise<{ id: s
       </div>
     );
   }
-  else{
-    const { event, dates, times, voteStats } = result.data;
-    return (
-      <>
-        <h1>イベント: {event.title}</h1>
-        <p>{event.description}</p>
-        <label>名前</label>
-        <input type="text" required />
+
+  const { event, dates, times } = result.data;
+
+  async function handleSubmit(formData: FormData) {
+    'use server';
+    
+    const result = await submitEventVote(formData);
+    
+    if (result.success) {
+      // 登録成功後、イベント詳細ページにリダイレクト
+      redirect(`/${id}`);
+    } else {
+      // エラー処理（実際のアプリでは適切なエラー表示が必要）
+      throw new Error(result.error);
+    }
+  }
+
+  return (
+    <>
+      <h1>イベント参加登録</h1>
+      <h2>{event.title}</h2>
+      <p>{event.description}</p>
+      
+      <form action={handleSubmit}>
+        <input type="hidden" name="eventId" value={id} />
+        
+        <div>
+          <label>
+            名前
+          </label>
+          <input 
+            type="text" 
+            id="participantName"
+            name="participantName"
+            required 
+          />
+        </div>
+
+        <h3>参加可能な日時を選択してください</h3>
         <table>
           <thead>
             <tr>
@@ -31,11 +65,11 @@ export default async function RegisterPage({ params }: { params: Promise<{ id: s
           <tbody>
            {times.map((time: any) => (
               <tr key={time.id}>
-                <td >
+                <td>
                   {time.time_label}
                 </td>
                 {dates.map((date: any) => {
-                  const key = `${date.id}-${time.id}`;
+                  const key = `${date.id}__${time.id}`; // __ を区切り文字として使用
                   return (
                     <td key={key}>
                       <input type="checkbox" name={key} />
@@ -46,7 +80,13 @@ export default async function RegisterPage({ params }: { params: Promise<{ id: s
             ))}
           </tbody>
         </table>
-      </>
-    );
-  }
+
+        <div>
+          <button type="submit">
+            登録する
+          </button>
+        </div>
+      </form>
+    </>
+  );
 }

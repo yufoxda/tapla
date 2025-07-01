@@ -36,9 +36,9 @@ export default async function ConfirmPage({ params }: { params: Promise<{ id: st
         </ul>
         <h2>投票統計</h2>
         <ul>
-            {voteStats.map((stat) => (
-                <li key={stat.id}>
-                    {stat.date_label} - {stat.time_label}: {stat.vote_count}票
+            {voteStats.map((stat, index) => (
+                <li key={`${stat.event_date_id}-${stat.event_time_id}`}>
+                    {stat.date_label} - {stat.time_label}: {stat.available_votes || 0}票 / {stat.total_votes || 0}票
                 </li>
             ))}
         </ul>
