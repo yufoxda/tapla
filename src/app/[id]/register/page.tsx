@@ -1,9 +1,8 @@
 import {fetchEvent } from '../actions';
 import { submitEventVote } from './actions';
-import { redirect } from 'next/navigation';
 
-export default async function RegisterPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function RegisterPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const result = await fetchEvent(id);
   
   if (!result.success || !result.data) {
@@ -17,27 +16,13 @@ export default async function RegisterPage({ params }: { params: { id: string } 
 
   const { event, dates, times } = result.data;
 
-  async function handleSubmit(formData: FormData) {
-    'use server';
-    
-    const result = await submitEventVote(formData);
-    
-    if (result.success) {
-      // 登録成功後、イベント詳細ページにリダイレクト
-      redirect(`/${id}`);
-    } else {
-      // エラー処理（実際のアプリでは適切なエラー表示が必要）
-      throw new Error(result.error);
-    }
-  }
-
   return (
     <>
       <h1>イベント参加登録</h1>
       <h2>{event.title}</h2>
       <p>{event.description}</p>
       
-      <form action={handleSubmit}>
+      <form action={submitEventVote}>
         <input type="hidden" name="eventId" value={id} />
         
         <div>
