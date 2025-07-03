@@ -1,42 +1,36 @@
-import Image from "next/image";
-import styles from "./page.module.css";
-import { getuser } from "./actions"
+import { getuser } from "./actions";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
   const user = await getuser();
-  
-  const handleLogout = async () => {
-    'use server';
-    redirect('/auth/logout');
-  };
 
-  const handleLogin = async () => {
-    'use server';
-    redirect('/auth/login');
-  };
+  async function handleLogin() {
+    "use server";
+    redirect("/auth/login");
+  }
+
+  async function handleLogout() {
+    "use server";
+    redirect("/auth/logout");
+  }
 
   return (
-<div>
-  <h1>main</h1>
-  <p>Welcome to the main page!</p>
-  <div>
-    {user ? (
+    <div>
+      <h1>main</h1>
+      <p>Welcome to the main page!</p>
       <div>
-        <p>ログイン中: {user.email}</p>
-          <button onClick={handleLogout} type="submit">
-            ログアウト
-          </button>
+        {user ? (
+          <form action={handleLogout}>
+            <p>ログイン中: {user.email}</p>
+            <button type="submit">ログアウト</button>
+          </form>
+        ) : (
+          <form action={handleLogin}>
+            <p>ログインしていません</p>
+            <button type="submit">ログイン</button>
+          </form>
+        )}
       </div>
-    ) : (
-      <div>
-        <p>ログインしていません</p>
-          <button type="submit" onClick={handleLogin}>
-            ログイン
-          </button>
-      </div>
-    )}
-  </div>
-</div>
+    </div>
   );
 }
