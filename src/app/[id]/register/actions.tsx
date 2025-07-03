@@ -22,7 +22,7 @@ export async function submitEventVote(formData: FormData) {
             .from('users')
             .insert([{ 
                 name: participantName.trim(),
-                auth_user_id: registerUser && registerUser.id ? registerUser.id : null // 非認証ユーザー
+                auth_user_id: registerUser?.id ?? null // 非認証ユーザー
             }])
             .select()
             .single();
