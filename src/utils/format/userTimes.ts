@@ -97,43 +97,33 @@ export function minutesToTimeString(minutes: number, dateString: string): string
 
 /** * 日付ラベルを解析する関数
  * @param dateLabel - 日付ラベル文字列
- * @returns 解析された日付情報
+ * @returns { date: dateオブジェクト, isDateRecognized: マッチするかboolean };
+ * @description
+ * 日付ラベルは様々な形式（YYYY-MM-DD、YYYY/MM/DD、YYYY年MM月DD日、MM-DD、MM/DD、MM月DD日）に対応。
+ * 年がない場合は現在の年を使用。
+ * 解析できない場合はnullを返す。
  */
 export function parseDateLabel(dateLabel: string): ParsedDate {
   if (!dateLabel) {
     return { date: null, isDateRecognized: false };
   }
   
-  // 様々な日付形式に対応
-  const patterns = [
-    /(\d{4})-(\d{1,2})-(\d{1,2})/,        // YYYY-MM-DD
-    /(\d{4})\/(\d{1,2})\/(\d{1,2})/,      // YYYY/MM/DD
-    /(\d{4})年(\d{1,2})月(\d{1,2})日/,     // YYYY年MM月DD日
-    /(\d{1,2})-(\d{1,2})/,                // MM-DD
-    /(\d{1,2})\/(\d{1,2})/,               // MM/DD
-    /(\d{1,2})月(\d{1,2})日/,             // MM月DD日
-  ];
+  const regex = /(?:(\d{4})[-\/年])?(\d{1,2})[-\/月](\d{1,2})日?/;// 年付き・年なし
+  const match = dateLabel.match(regex);
+
+// match[0] = "2024年12月25日"  // マッチした全体
+// match[1] = "2024"            // 年の部分
+// match[2] = "12"              // 月の部分
+// match[3] = "25"   
   
-  for (const pattern of patterns) {
-    const match = dateLabel.match(pattern);
-    if (match) {
-      let year, month, day;
-      
-      if (match[3]) {
-        // 年がある場合
-        year = parseInt(match[1]);
-        month = parseInt(match[2]) - 1; // Dateオブジェクトでは月は0から始まる
-        day = parseInt(match[3]);
-      } else {
-        // 年がない場合、現在の年を使用
-        year = new Date().getFullYear();
-        month = parseInt(match[1]) - 1;
-        day = parseInt(match[2]);
-      }
-      
-      const date = new Date(year, month, day);
-      return { date, isDateRecognized: true };
-    }
+  if (match) {
+    const currentYear = new Date().getFullYear();
+    const year = match[1] ? parseInt(match[1]) : currentYear;  // 年がない場合は現在の年
+    const month = parseInt(match[2]) - 1;  // Dateオブジェクトでは月は0から始まる
+    const day = parseInt(match[3]);
+    
+    const date = new Date(year, month, day);
+    return { date, isDateRecognized: true };
   }
   
   return { date: null, isDateRecognized: false };
@@ -141,7 +131,12 @@ export function parseDateLabel(dateLabel: string): ParsedDate {
 
 /** * 時刻ラベルを解析する関数
  * @param timeLabel - 時刻ラベル文字列
- * @returns 解析された時刻情報
+ * @returns { startTime: null, endTime: null, isTimeRecognized: false };
+ * @description
+ * 時刻ラベルは様々な形式（HH:MM、HH:MM-HH:MM、HH:MM~HH:MM）に対応。
+ * 時刻範囲の場合は開始時刻と終了時刻を返す。
+ * 単一時刻の場合は開始時刻のみを返し、終了時刻はnull。
+ * 解析できない場合はnullを返す。
  */
 export function parseTimeLabel(timeLabel: string): ParsedTime {
   if (!timeLabel) {
@@ -215,30 +210,57 @@ export function createUserAvailabilityPatternsFromVotes(
 ): UserAvailabilityPattern[] {
   // 利用可能な投票のみをフィルタリング
   const availableVotes = votes.filter(vote => vote.isAvailable);
+
+//isAvailableがtrueの投票のみを抽出
+//   availableVotes = [
+//   { eventDateId: "date1", eventTimeId: "time1", isAvailable: true },
+//   { eventDateId: "date2", eventTimeId: "time3", isAvailable: true },
+//   { eventDateId: "date3", eventTimeId: "time5", isAvailable: true }
+// ]
   
   // 日付ごとにグループ化
   const votesByDate = new Map<string, VoteData[]>();
+
+// 下のような構造を持つ変数の初期化。
+// votesByDate = Map {
+//   "2025-07-04" => [
+//     { eventDateId: "date1", eventTimeId: "time1", isAvailable: true },
+//     { eventDateId: "date1", eventTimeId: "time2", isAvailable: true }
+//   ],
+//   "2025-07-05" => [
+//     { eventDateId: "date2", eventTimeId: "time3", isAvailable: true }
+//   ]
+// }
   
-  for (const vote of availableVotes) {
+  for (const vote of availableVotes) {//of: python のfor文と同じ
+    // 日付ラベルを取得
     const dateLabel = dateLabels.get(vote.eventDateId);
-    if (!dateLabel) continue;
+    if (!dateLabel) continue;//ない場合
     
     const parsedDate = parseDateLabel(dateLabel);
-    if (!parsedDate.isDateRecognized || !parsedDate.date) continue;
+    if (!parsedDate.isDateRecognized || !parsedDate.date) continue;// 日付が認識できない場合
     
     // 標準化された日付文字列を作成
     const normalizedDate = formatDateToStandard(parsedDate.date);
     
+    // 日付ごとに投票をグループ化
     if (!votesByDate.has(normalizedDate)) {
       votesByDate.set(normalizedDate, []);
     }
-    votesByDate.get(normalizedDate)!.push(vote);
+    votesByDate.get(normalizedDate)!.push(vote); // vote:{ eventDateId: "date1", eventTimeId: "time1", isAvailable: true }
   }
   
   const patterns: UserAvailabilityPattern[] = [];
   
   // 日付ごとに処理
   for (const [dateString, dayVotes] of votesByDate) {
+
+    // dateString:{"2025-07-04"} 日付文字列
+    // dayVotes: [
+    //   { eventDateId: "date1", eventTimeId: "time1", isAvailable: true },
+    //   { eventDateId: "date1", eventTimeId: "time2", isAvailable: true }
+    // ]その日の投票データの配列
+
     // 時刻情報を取得して分に変換
     const timeRanges = createTimeRangesFromVotes(dayVotes, timeLabels);
     
@@ -299,8 +321,8 @@ export function createUserAvailabilityPatternsFromFormData(
 }
 
 /** * 投票データから時間範囲配列を作成する
- * @param dayVotes - その日の投票データ配列
- * @param timeLabels - 時刻ラベルのマップ (event_time_id -> timeLabel)
+ * @param dayVotes - { eventDateId, eventTimeId, isAvailable } その日の投票データ配列
+ * @param timeLabels - { event_time_id , timeLabel } 時刻ラベルのマップ 
  * @returns 時間範囲の配列
  */
 export function createTimeRangesFromVotes(
