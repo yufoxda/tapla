@@ -166,35 +166,37 @@ export function parseTimeLabel(timeLabel: string): ParsedTime {
 }
 
 /** * 時間範囲を結合する関数
- * @param ranges - 時間範囲の配列
- * @returns 結合された時間範囲の配列
+ * @param {TimeRange[]} ranges - 時間範囲の配列
+ * @returns {TimeRange[]} 結合された時間範囲の配列
+ * @description
+ * 時間範囲を開始時刻でソートし、隣接または重複している範囲を統合します。 日付ごとにグループ化された時間範囲配列なのでok
+ * 隙間がある場合は新しい範囲として分割します。
+ * 結合された時間範囲の配列を返します。
  */
 export function mergeTimeRanges(ranges: TimeRange[]): TimeRange[] {
   if (ranges.length === 0) return [];
   
   // 開始時刻でソート
   const sortedRanges = [...ranges].sort((a, b) => a.start - b.start);
-  const merged: TimeRange[] = [];
   
-  let currentStart = sortedRanges[0].start;
-  let currentEnd = sortedRanges[0].end;
-  
-  for (let i = 1; i < sortedRanges.length; i++) {
-    const range = sortedRanges[i];
+  // reduceを使った関数型アプローチ
+  return sortedRanges.reduce<TimeRange[]>((merged, current) => {
+    if (merged.length === 0) {
+      // 最初の要素
+      return [current];
+    }
+    
+    const last = merged[merged.length - 1];
     
     // 隣接または重複している場合は統合
-    if (range.start <= currentEnd) {
-      currentEnd = Math.max(currentEnd, range.end);
+    if (current.start <= last.end) {
+      last.end = Math.max(last.end, current.end);
+      return merged;
     } else {
-      // 隙間がある場合は分割
-      merged.push({ start: currentStart, end: currentEnd });
-      currentStart = range.start;
-      currentEnd = range.end;
+      // 隙間がある場合は新しい範囲として追加
+      return [...merged, current];
     }
-  }
-  
-  merged.push({ start: currentStart, end: currentEnd });
-  return merged;
+  }, []);
 }
 
 /** * 投票データから時間範囲を結合してユーザーの可用性パターンを作成する
