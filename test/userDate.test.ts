@@ -1,6 +1,15 @@
 import { timeStringToMinutes, minutesToTimeString, parseDateLabel, parseTimeLabel, mergeTimeRanges, createUserAvailabilityPatternsFromVotes, createUserAvailabilityPatternsFromFormData } from '@/utils/format/userTimes';
 
 describe('userDate', () => {
+  // console.warnをモック
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('timeStringToMinutes', () => {
     test('様々な時刻文字列を分に変換する', () => {
       expect(timeStringToMinutes('09:00:00')).toBe(540); // 9時 = 9*60 = 540分
@@ -13,9 +22,16 @@ describe('userDate', () => {
 
     test('無効な入力に対してwarningを出し0を返す', () => {
       expect(timeStringToMinutes('')).toBe(0);
+      expect(console.warn).toHaveBeenCalledWith('Invalid timeString:', '');
+      
       expect(timeStringToMinutes('invalid')).toBe(0);
+      expect(console.warn).toHaveBeenCalledWith('Invalid time format:', 'invalid');
+      
       expect(timeStringToMinutes('25:00:00')).toBe(0); // 25時は無効
+      expect(console.warn).toHaveBeenCalledWith('Time out of range:', '25:00:00');
+      
       expect(timeStringToMinutes('12:60:00')).toBe(0); // 60分は無効
+      expect(console.warn).toHaveBeenCalledWith('Time out of range:', '12:60:00');
     });
   });
 
@@ -179,20 +195,22 @@ describe('userDate', () => {
         ['time3', '14:00-15:00'],
       ]);
 
-      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels);
+      const userId = 'user123';
+
+      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
 
       expect(result).toHaveLength(2);
       
       // 2023-10-01の結合されたパターン（9:00-11:00）
       expect(result[0]).toEqual({
-        user_id: '',
+        user_id: 'user123',
         start_time: '2023-10-01 09:00:00',
         end_time: '2023-10-01 11:00:00'
       });
 
       // 2023-10-02のパターン（9:00-10:00）
       expect(result[1]).toEqual({
-        user_id: '',
+        user_id: 'user123',
         start_time: '2023-10-02 09:00:00',
         end_time: '2023-10-02 10:00:00'
       });
@@ -210,7 +228,9 @@ describe('userDate', () => {
         ['time2', '10:00-11:00'],
       ]);
 
-      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels);
+      const userId = 'user123';
+
+      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
       expect(result).toHaveLength(0);
     });
 
@@ -223,7 +243,9 @@ describe('userDate', () => {
       const dateLabels = new Map([['date1', '2023-10-01']]);
       const timeLabels = new Map([['time1', '09:00-10:00']]);
 
-      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels);
+      const userId = 'user123';
+
+      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
       expect(result).toHaveLength(0);
     });
   });
