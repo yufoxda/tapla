@@ -203,12 +203,14 @@ export function mergeTimeRanges(ranges: TimeRange[]): TimeRange[] {
  * @param votes - 投票データの配列
  * @param dateLabels - 日付ラベルのマップ (event_date_id -> dateLabel)
  * @param timeLabels - 時刻ラベルのマップ (event_time_id -> timeLabel)
+ * @param userId - ユーザーID
  * @returns 作成されたユーザー可用性パターンの配列
  */
 export function createUserAvailabilityPatternsFromVotes(
   votes: VoteData[],
   dateLabels: Map<string, string>,
-  timeLabels: Map<string, string>
+  timeLabels: Map<string, string>,
+  userId: string
 ): UserAvailabilityPattern[] {
   // 利用可能な投票のみをフィルタリング
   const availableVotes = votes.filter(vote => vote.isAvailable);
@@ -275,7 +277,7 @@ export function createUserAvailabilityPatternsFromVotes(
       const endTimestamp = minutesToTimeString(range.end, dateString);
       
       patterns.push({
-        user_id: '', // 呼び出し元で設定される
+        user_id: userId, // 関数パラメータから直接設定
         start_time: startTimestamp,
         end_time: endTimestamp
       });
@@ -313,13 +315,10 @@ export function createUserAvailabilityPatternsFromFormData(
   }
   
   // 投票データから可用性パターンを作成
-  const patterns = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels);
+  const patterns = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
   
-  // user_idを設定
-  return patterns.map(pattern => ({
-    ...pattern,
-    user_id: userId
-  }));
+  // 既にuser_idが設定されているのでそのまま返す
+  return patterns;
 }
 
 /** * 投票データから時間範囲配列を作成する
