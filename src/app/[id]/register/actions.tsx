@@ -2,12 +2,15 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { getuser } from '@/app/actions';
 
 export async function submitEventVote(formData: FormData) {
     const supabase = await createClient();
 
     const eventId = formData.get('eventId') as string;
     const participantName = formData.get('participantName') as string;
+
+    const registerUser = await getuser();
 
     try {
         if (!eventId || !participantName.trim()) {
@@ -19,7 +22,7 @@ export async function submitEventVote(formData: FormData) {
             .from('users')
             .insert([{ 
                 name: participantName.trim(),
-                auth_user_id: null // 非認証ユーザー
+                auth_user_id: registerUser?.id ?? null // 非認証ユーザー
             }])
             .select()
             .single();
@@ -67,3 +70,4 @@ export async function submitEventVote(formData: FormData) {
     
     redirect(`/${eventId}`);
 }
+
