@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getuser } from '@/app/actions';
-import { createUserAvailabilityPatternsFromFormData, extractVotesFromFormData } from '@/utils/format/userTimes';
+import { extractAllDataFromFormData, createUserAvailabilityPatternsFromFormData } from '@/utils/format/userTimes';
 
 export async function submitEventVote(formData: FormData) {
     
@@ -34,8 +34,8 @@ export async function submitEventVote(formData: FormData) {
             throw new Error('ユーザーの登録に失敗しました');
         }
 
-        // 2. 投票データを収集
-        const voteData = extractVotesFromFormData(formData);
+        // 2. 投票データを一括取得
+        const { votes: voteData } = extractAllDataFromFormData(formData);
         const votes = voteData.map(vote => ({
             user_id: user.id,
             event_id: eventId,
