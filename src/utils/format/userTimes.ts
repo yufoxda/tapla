@@ -17,6 +17,15 @@ export interface VoteData {
   isAvailable: boolean;
 }
 
+/** * 日付と時刻の情報を含む投票用データ構造 */
+export interface VoteItem {
+  did: string;      // date ID
+  dlabel: string;   // date label ("2023-10-01")
+  tid: string;      // time ID  
+  tlabel: string;   // time label ("09:00-10:00")
+  isvoted: boolean; // 投票されているか
+}
+
 export interface UserAvailabilityPattern {
   id?: string;
   user_id: string;
@@ -199,50 +208,25 @@ export function mergeTimeRanges(ranges: TimeRange[]): TimeRange[] {
   }, []);
 }
 
-/** * 投票データから時間範囲を結合してユーザーの可用性パターンを作成する
- * @param votes - 投票データの配列
- * @param dateLabels - 日付ラベルのマップ (event_date_id -> dateLabel)
- * @param timeLabels - 時刻ラベルのマップ (event_time_id -> timeLabel)
+/** * VoteItem配列からユーザーの可用性パターンを作成する
+ * @param voteItems - 投票アイテムの配列
  * @param userId - ユーザーID
  * @returns 作成されたユーザー可用性パターンの配列
  */
-export function createUserAvailabilityPatternsFromVotes(
-  votes: VoteData[],
-  dateLabels: Map<string, string>,
-  timeLabels: Map<string, string>,
+export function createUserAvailabilityPatternsFromVoteItems(
+  voteItems: VoteItem[],
   userId: string
 ): UserAvailabilityPattern[] {
-  // 利用可能な投票のみをフィルタリング
-  const availableVotes = votes.filter(vote => vote.isAvailable);
-
-//isAvailableがtrueの投票のみを抽出
-//   availableVotes = [
-//   { eventDateId: "date1", eventTimeId: "time1", isAvailable: true },
-//   { eventDateId: "date2", eventTimeId: "time3", isAvailable: true },
-//   { eventDateId: "date3", eventTimeId: "time5", isAvailable: true }
-// ]
+  // 投票された（利用可能な）アイテムのみをフィルタリング
+  const availableVotes = voteItems.filter(item => item.isvoted);
   
   // 日付ごとにグループ化
-  const votesByDate = new Map<string, VoteData[]>();
-
-// 下のような構造を持つ変数の初期化。
-// votesByDate = Map {
-//   "2025-07-04" => [
-//     { eventDateId: "date1", eventTimeId: "time1", isAvailable: true },
-//     { eventDateId: "date1", eventTimeId: "time2", isAvailable: true }
-//   ],
-//   "2025-07-05" => [
-//     { eventDateId: "date2", eventTimeId: "time3", isAvailable: true }
-//   ]
-// }
+  const votesByDate = new Map<string, VoteItem[]>();
   
-  for (const vote of availableVotes) {//of: python のfor文と同じ
-    // 日付ラベルを取得
-    const dateLabel = dateLabels.get(vote.eventDateId);
-    if (!dateLabel) continue;//ない場合
-    
-    const parsedDate = parseDateLabel(dateLabel);
-    if (!parsedDate.isDateRecognized || !parsedDate.date) continue;// 日付が認識できない場合
+  for (const vote of availableVotes) {
+    // 日付ラベルを解析
+    const parsedDate = parseDateLabel(vote.dlabel);
+    if (!parsedDate.isDateRecognized || !parsedDate.date) continue;
     
     // 標準化された日付文字列を作成
     const normalizedDate = formatDateToStandard(parsedDate.date);
@@ -251,22 +235,15 @@ export function createUserAvailabilityPatternsFromVotes(
     if (!votesByDate.has(normalizedDate)) {
       votesByDate.set(normalizedDate, []);
     }
-    votesByDate.get(normalizedDate)!.push(vote); // vote:{ eventDateId: "date1", eventTimeId: "time1", isAvailable: true }
+    votesByDate.get(normalizedDate)!.push(vote);
   }
   
   const patterns: UserAvailabilityPattern[] = [];
   
   // 日付ごとに処理
   for (const [dateString, dayVotes] of votesByDate) {
-
-    // dateString:{"2025-07-04"} 日付文字列
-    // dayVotes: [
-    //   { eventDateId: "date1", eventTimeId: "time1", isAvailable: true },
-    //   { eventDateId: "date1", eventTimeId: "time2", isAvailable: true }
-    // ]その日の投票データの配列
-
     // 時刻情報を取得して分に変換
-    const timeRanges = createTimeRangesFromVotes(dayVotes, timeLabels);
+    const timeRanges = createTimeRangesFromVoteItems(dayVotes);
     
     // 時間範囲を結合
     const mergedRanges = mergeTimeRanges(timeRanges);
@@ -277,7 +254,7 @@ export function createUserAvailabilityPatternsFromVotes(
       const endTimestamp = minutesToTimeString(range.end, dateString);
       
       patterns.push({
-        user_id: userId, // 関数パラメータから直接設定
+        user_id: userId,
         start_time: startTimestamp,
         end_time: endTimestamp
       });
@@ -287,56 +264,15 @@ export function createUserAvailabilityPatternsFromVotes(
   return patterns;
 }
 
-/** * FormDataから投票データを抽出し、時間範囲を結合してユーザーの可用性パターンを作成する
- * @param formData - フォームデータ
- * @param userId - ユーザーID
- * @param dateLabels - 日付ラベルのマップ (event_date_id -> dateLabel)
- * @param timeLabels - 時刻ラベルのマップ (event_time_id -> timeLabel)
- * @returns 作成されたユーザー可用性パターンの配列
- */
-export function createUserAvailabilityPatternsFromFormData(
-  formData: FormData,
-  userId: string,
-  dateLabels: Map<string, string>,
-  timeLabels: Map<string, string>
-): UserAvailabilityPattern[] {
-  const votes: VoteData[] = [];
-  
-  // FormDataから投票データを抽出
-  for (const [key, value] of formData.entries()) {
-    if (key.includes('__') && value === 'on') {
-      const [dateId, timeId] = key.split('__');
-      votes.push({
-        eventDateId: dateId,
-        eventTimeId: timeId,
-        isAvailable: true
-      });
-    }
-  }
-  
-  // 投票データから可用性パターンを作成
-  const patterns = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
-  
-  // 既にuser_idが設定されているのでそのまま返す
-  return patterns;
-}
-
-/** * 投票データから時間範囲配列を作成する
- * @param dayVotes - { eventDateId, eventTimeId, isAvailable } その日の投票データ配列
- * @param timeLabels - { event_time_id , timeLabel } 時刻ラベルのマップ 
+/** * VoteItemから時間範囲配列を作成する
+ * @param dayVotes - その日の投票データ配列
  * @returns 時間範囲の配列
  */
-export function createTimeRangesFromVotes(
-  dayVotes: VoteData[],
-  timeLabels: Map<string, string>
-): TimeRange[] {
+export function createTimeRangesFromVoteItems(dayVotes: VoteItem[]): TimeRange[] {
   const timeRanges: TimeRange[] = [];
   
   for (const vote of dayVotes) {
-    const timeLabel = timeLabels.get(vote.eventTimeId);
-    if (!timeLabel) continue;
-    
-    const parsedTime = parseTimeLabel(timeLabel);
+    const parsedTime = parseTimeLabel(vote.tlabel);
     if (!parsedTime.isTimeRecognized || !parsedTime.startTime) continue;
     
     // 時刻を分に変換
@@ -358,4 +294,74 @@ export function createTimeRangesFromVotes(
   }
   
   return timeRanges;
+}
+
+/** * FormDataから投票データ、日付ラベル、時刻ラベルを一括で抽出する
+ * @param formData - フォームデータ
+ * @returns 投票データと各種ラベルの配列
+ */
+export function extractAllDataFromFormData(formData: FormData): {
+  votes: VoteData[];
+  voteItems: VoteItem[];
+  dateLabels: string[];
+  timeLabels: string[];
+} {
+  const votes: VoteData[] = [];
+  const voteItems: VoteItem[] = [];
+  const dateLabels = new Set<string>();
+  const timeLabels = new Set<string>();
+
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith('vote-') && value === 'on') {
+      // キーの形式: vote-{eventDateId}-{eventTimeId}
+      const parts = key.split('-');
+      if (parts.length === 3) {
+        const eventDateId = parts[1];
+        const eventTimeId = parts[2];
+        
+        // 対応するラベルを取得
+        const dateLabel = formData.get(`date-label-${eventDateId}`) as string || '';
+        const timeLabel = formData.get(`time-label-${eventTimeId}`) as string || '';
+        
+        // VoteDataとVoteItemを作成
+        votes.push({
+          eventDateId,
+          eventTimeId,
+          isAvailable: true
+        });
+        
+        voteItems.push({
+          did: eventDateId,
+          dlabel: dateLabel,
+          tid: eventTimeId,
+          tlabel: timeLabel,
+          isvoted: true
+        });
+        
+        // ラベルを収集
+        if (dateLabel) dateLabels.add(dateLabel);
+        if (timeLabel) timeLabels.add(timeLabel);
+      }
+    }
+  }
+
+  return {
+    votes,
+    voteItems,
+    dateLabels: Array.from(dateLabels),
+    timeLabels: Array.from(timeLabels)
+  };
+}
+
+/** * FormDataからユーザーの可用性パターンを作成する（VoteItemベース）
+ * @param formData - フォームデータ
+ * @param userId - ユーザーID
+ * @returns 作成されたユーザー可用性パターンの配列
+ */
+export function createUserAvailabilityPatternsFromFormData(
+  formData: FormData,
+  userId: string
+): UserAvailabilityPattern[] {
+  const { voteItems } = extractAllDataFromFormData(formData);
+  return createUserAvailabilityPatternsFromVoteItems(voteItems, userId);
 }

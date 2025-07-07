@@ -1,4 +1,4 @@
-import { timeStringToMinutes, minutesToTimeString, parseDateLabel, parseTimeLabel, mergeTimeRanges, createUserAvailabilityPatternsFromVotes, createUserAvailabilityPatternsFromFormData } from '@/utils/format/userTimes';
+import { timeStringToMinutes, minutesToTimeString, parseDateLabel, parseTimeLabel, mergeTimeRanges, createUserAvailabilityPatternsFromVoteItems, createUserAvailabilityPatternsFromFormData, extractAllDataFromFormData, createTimeRangesFromVoteItems, VoteItem } from '@/utils/format/userTimes';
 
 describe('userDate', () => {
   // console.warnをモック
@@ -175,29 +175,18 @@ describe('userDate', () => {
     });
   });
 
-  describe('createUserAvailabilityPatternsFromVotes', () => {
-    test('投票データから可用性パターンを作成する', () => {
-      const votes = [
-        { eventDateId: 'date1', eventTimeId: 'time1', isAvailable: true },
-        { eventDateId: 'date1', eventTimeId: 'time2', isAvailable: true },
-        { eventDateId: 'date1', eventTimeId: 'time3', isAvailable: false },
-        { eventDateId: 'date2', eventTimeId: 'time1', isAvailable: true },
+  describe('createUserAvailabilityPatternsFromVoteItems', () => {
+    test('VoteItemsから可用性パターンを作成する', () => {
+      const voteItems: VoteItem[] = [
+        { did: 'date1', dlabel: '2023-10-01', tid: 'time1', tlabel: '09:00-10:00', isvoted: true },
+        { did: 'date1', dlabel: '2023-10-01', tid: 'time2', tlabel: '10:00-11:00', isvoted: true },
+        { did: 'date1', dlabel: '2023-10-01', tid: 'time3', tlabel: '14:00-15:00', isvoted: false },
+        { did: 'date2', dlabel: '2023-10-02', tid: 'time1', tlabel: '09:00-10:00', isvoted: true },
       ];
-
-      const dateLabels = new Map([
-        ['date1', '2023-10-01'],
-        ['date2', '2023-10-02'],
-      ]);
-
-      const timeLabels = new Map([
-        ['time1', '09:00-10:00'],
-        ['time2', '10:00-11:00'],
-        ['time3', '14:00-15:00'],
-      ]);
 
       const userId = 'user123';
 
-      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
+      const result = createUserAvailabilityPatternsFromVoteItems(voteItems, userId);
 
       expect(result).toHaveLength(2);
       
@@ -217,35 +206,26 @@ describe('userDate', () => {
     });
 
     test('利用不可能な投票を除外する', () => {
-      const votes = [
-        { eventDateId: 'date1', eventTimeId: 'time1', isAvailable: false },
-        { eventDateId: 'date1', eventTimeId: 'time2', isAvailable: false },
+      const voteItems: VoteItem[] = [
+        { did: 'date1', dlabel: '2023-10-01', tid: 'time1', tlabel: '09:00-10:00', isvoted: false },
+        { did: 'date1', dlabel: '2023-10-01', tid: 'time2', tlabel: '10:00-11:00', isvoted: false },
       ];
-
-      const dateLabels = new Map([['date1', '2023-10-01']]);
-      const timeLabels = new Map([
-        ['time1', '09:00-10:00'],
-        ['time2', '10:00-11:00'],
-      ]);
 
       const userId = 'user123';
 
-      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
+      const result = createUserAvailabilityPatternsFromVoteItems(voteItems, userId);
       expect(result).toHaveLength(0);
     });
 
     test('不正な日付・時刻ラベルを処理する', () => {
-      const votes = [
-        { eventDateId: 'invalid-date', eventTimeId: 'time1', isAvailable: true },
-        { eventDateId: 'date1', eventTimeId: 'invalid-time', isAvailable: true },
+      const voteItems: VoteItem[] = [
+        { did: 'invalid-date', dlabel: 'invalid-date-label', tid: 'time1', tlabel: '09:00-10:00', isvoted: true },
+        { did: 'date1', dlabel: '2023-10-01', tid: 'invalid-time', tlabel: 'invalid-time-label', isvoted: true },
       ];
-
-      const dateLabels = new Map([['date1', '2023-10-01']]);
-      const timeLabels = new Map([['time1', '09:00-10:00']]);
 
       const userId = 'user123';
 
-      const result = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
+      const result = createUserAvailabilityPatternsFromVoteItems(voteItems, userId);
       expect(result).toHaveLength(0);
     });
   });
@@ -253,23 +233,20 @@ describe('userDate', () => {
   describe('createUserAvailabilityPatternsFromFormData', () => {
     test('FormDataから可用性パターンを作成する', () => {
       const formData = new FormData();
-      formData.set('date1__time1', 'on');
-      formData.set('date1__time2', 'on');
-      formData.set('date2__time1', 'on');
+      formData.set('vote-date1-time1', 'on');
+      formData.set('vote-date1-time2', 'on');
+      formData.set('vote-date2-time1', 'on');
       formData.set('other-field', 'value');
+      
+      // ラベルデータ
+      formData.set('date-label-date1', '2023-10-01');
+      formData.set('date-label-date2', '2023-10-02');
+      formData.set('time-label-time1', '09:00-10:00');
+      formData.set('time-label-time2', '10:00-11:00');
 
       const userId = 'user123';
-      const dateLabels = new Map([
-        ['date1', '2023-10-01'],
-        ['date2', '2023-10-02'],
-      ]);
 
-      const timeLabels = new Map([
-        ['time1', '09:00-10:00'],
-        ['time2', '10:00-11:00'],
-      ]);
-
-      const result = createUserAvailabilityPatternsFromFormData(formData, userId, dateLabels, timeLabels);
+      const result = createUserAvailabilityPatternsFromFormData(formData, userId);
 
       expect(result).toHaveLength(2);
       
@@ -289,11 +266,83 @@ describe('userDate', () => {
     test('空のFormDataを処理する', () => {
       const formData = new FormData();
       const userId = 'user123';
-      const dateLabels = new Map();
-      const timeLabels = new Map();
 
-      const result = createUserAvailabilityPatternsFromFormData(formData, userId, dateLabels, timeLabels);
+      const result = createUserAvailabilityPatternsFromFormData(formData, userId);
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('extractAllDataFromFormData', () => {
+    test('FormDataから投票データとラベルを一括抽出する', () => {
+      const formData = new FormData();
+      formData.set('vote-date1-time1', 'on');
+      formData.set('vote-date1-time2', 'on');
+      formData.set('vote-date2-time1', 'on');
+      formData.set('date-label-date1', '2023-10-01');
+      formData.set('date-label-date2', '2023-10-02');
+      formData.set('time-label-time1', '09:00-10:00');
+      formData.set('time-label-time2', '10:00-11:00');
+      formData.set('other-field', 'value');
+
+      const { votes, voteItems, dateLabels, timeLabels } = extractAllDataFromFormData(formData);
+
+      expect(votes).toHaveLength(3);
+      expect(votes).toEqual([
+        { eventDateId: 'date1', eventTimeId: 'time1', isAvailable: true },
+        { eventDateId: 'date1', eventTimeId: 'time2', isAvailable: true },
+        { eventDateId: 'date2', eventTimeId: 'time1', isAvailable: true },
+      ]);
+
+      expect(voteItems).toHaveLength(3);
+      expect(voteItems).toEqual([
+        { did: 'date1', dlabel: '2023-10-01', tid: 'time1', tlabel: '09:00-10:00', isvoted: true },
+        { did: 'date1', dlabel: '2023-10-01', tid: 'time2', tlabel: '10:00-11:00', isvoted: true },
+        { did: 'date2', dlabel: '2023-10-02', tid: 'time1', tlabel: '09:00-10:00', isvoted: true },
+      ]);
+
+      expect(dateLabels).toEqual(['2023-10-01', '2023-10-02']);
+      expect(timeLabels).toEqual(['09:00-10:00', '10:00-11:00']);
+    });
+
+    test('空のFormDataを処理する', () => {
+      const formData = new FormData();
+
+      const { votes, voteItems, dateLabels, timeLabels } = extractAllDataFromFormData(formData);
+
+      expect(votes).toHaveLength(0);
+      expect(voteItems).toHaveLength(0);
+      expect(dateLabels).toHaveLength(0);
+      expect(timeLabels).toHaveLength(0);
+    });
+
+    test('投票以外のフィールドを無視する', () => {
+      const formData = new FormData();
+      formData.set('vote-date1-time1', 'on');
+      formData.set('date-label-date1', '2023-10-01');
+      formData.set('time-label-time1', '09:00-10:00');
+      formData.set('participantName', 'John');
+      formData.set('eventId', 'event123');
+
+      const { votes, voteItems, dateLabels, timeLabels } = extractAllDataFromFormData(formData);
+
+      expect(votes).toHaveLength(1);
+      expect(votes[0]).toEqual({
+        eventDateId: 'date1',
+        eventTimeId: 'time1',
+        isAvailable: true
+      });
+
+      expect(voteItems).toHaveLength(1);
+      expect(voteItems[0]).toEqual({
+        did: 'date1',
+        dlabel: '2023-10-01',
+        tid: 'time1',
+        tlabel: '09:00-10:00',
+        isvoted: true
+      });
+
+      expect(dateLabels).toEqual(['2023-10-01']);
+      expect(timeLabels).toEqual(['09:00-10:00']);
     });
   });
 });
