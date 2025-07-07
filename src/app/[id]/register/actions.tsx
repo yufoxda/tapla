@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getuser } from '@/app/actions';
+import { createUserAvailabilityPatternsFromFormData } from '@/utils/format/userTimes';
 
 export async function submitEventVote(formData: FormData) {
     const supabase = await createClient();
@@ -57,9 +58,32 @@ export async function submitEventVote(formData: FormData) {
                 console.error('Error saving votes:', votesError);
                 throw new Error('投票の保存に失敗しました');
             }
+
+            // 4. ユーザーの可用性パターンを作成・保存
+            try {
+                const userAvailabilityPatterns = createUserAvailabilityPatternsFromFormData(
+                    formData,
+                    user.id
+                );
+
+                if (userAvailabilityPatterns.length > 0) {
+                    const { error: patternError } = await supabase
+                        .from('user_availability_patterns')
+                        .insert(userAvailabilityPatterns);
+
+                    if (patternError) {
+                        console.error('Error creating user availability patterns:', patternError);
+                        throw new Error('ユーザーの利用可能時間パターンの作成に失敗しました');
+                    }
+                }
+            } catch (patternError) {
+                console.error('Error in createUserAvailabilityPatternsFromFormData:', patternError);
+                // パターン作成が失敗しても投票は保存されているので、警告のみで続行
+                console.warn('ユーザーの利用可能時間パターンの作成をスキップしました');
+            }
         }
 
-        // 4. キャッシュを再検証
+        // 5. キャッシュを再検証
         revalidatePath(`/${eventId}`);
         revalidatePath(`/${eventId}/register`);
 
@@ -70,4 +94,5 @@ export async function submitEventVote(formData: FormData) {
     
     redirect(`/${eventId}`);
 }
+
 

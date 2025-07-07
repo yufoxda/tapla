@@ -1,4 +1,4 @@
-import { timeStringToMinutes, minutesToTimeString, parseDateLabel, parseTimeLabel, mergeTimeRanges, createUserAvailabilityPatternsFromVotes, createUserAvailabilityPatternsFromFormData } from '@/utils/format/userTimes';
+import { timeStringToMinutes, minutesToTimeString, parseDateLabel, parseTimeLabel, mergeTimeRanges, createUserAvailabilityPatternsFromVotes, createUserAvailabilityPatternsFromFormData, extractLabelsFromFormData, extractVotesFromFormData } from '@/utils/format/userTimes';
 
 describe('userDate', () => {
   // console.warnをモック
@@ -257,19 +257,16 @@ describe('userDate', () => {
       formData.set('date1__time2', 'on');
       formData.set('date2__time1', 'on');
       formData.set('other-field', 'value');
+      
+      // ラベルデータ
+      formData.set('dateLabel_date1', '2023-10-01');
+      formData.set('dateLabel_date2', '2023-10-02');
+      formData.set('timeLabel_time1', '09:00-10:00');
+      formData.set('timeLabel_time2', '10:00-11:00');
 
       const userId = 'user123';
-      const dateLabels = new Map([
-        ['date1', '2023-10-01'],
-        ['date2', '2023-10-02'],
-      ]);
 
-      const timeLabels = new Map([
-        ['time1', '09:00-10:00'],
-        ['time2', '10:00-11:00'],
-      ]);
-
-      const result = createUserAvailabilityPatternsFromFormData(formData, userId, dateLabels, timeLabels);
+      const result = createUserAvailabilityPatternsFromFormData(formData, userId);
 
       expect(result).toHaveLength(2);
       
@@ -289,11 +286,83 @@ describe('userDate', () => {
     test('空のFormDataを処理する', () => {
       const formData = new FormData();
       const userId = 'user123';
-      const dateLabels = new Map();
-      const timeLabels = new Map();
 
-      const result = createUserAvailabilityPatternsFromFormData(formData, userId, dateLabels, timeLabels);
+      const result = createUserAvailabilityPatternsFromFormData(formData, userId);
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('extractLabelsFromFormData', () => {
+    test('FormDataからラベルを抽出する', () => {
+      const formData = new FormData();
+      formData.set('dateLabel_date1', '2023-10-01');
+      formData.set('dateLabel_date2', '2023-10-02');
+      formData.set('timeLabel_time1', '09:00-10:00');
+      formData.set('timeLabel_time2', '10:00-11:00');
+      formData.set('other-field', 'value');
+
+      const { dateLabels, timeLabels } = extractLabelsFromFormData(formData);
+
+      expect(dateLabels.size).toBe(2);
+      expect(dateLabels.get('date1')).toBe('2023-10-01');
+      expect(dateLabels.get('date2')).toBe('2023-10-02');
+
+      expect(timeLabels.size).toBe(2);
+      expect(timeLabels.get('time1')).toBe('09:00-10:00');
+      expect(timeLabels.get('time2')).toBe('10:00-11:00');
+    });
+
+    test('空のFormDataを処理する', () => {
+      const formData = new FormData();
+
+      const { dateLabels, timeLabels } = extractLabelsFromFormData(formData);
+
+      expect(dateLabels.size).toBe(0);
+      expect(timeLabels.size).toBe(0);
+    });
+  });
+
+  describe('extractVotesFromFormData', () => {
+    test('FormDataから投票データを抽出する', () => {
+      const formData = new FormData();
+      formData.set('date1__time1', 'on');
+      formData.set('date1__time2', 'on');
+      formData.set('date2__time1', 'on');
+      formData.set('other-field', 'value');
+
+      const votes = extractVotesFromFormData(formData);
+
+      expect(votes).toHaveLength(3);
+      expect(votes).toEqual([
+        { eventDateId: 'date1', eventTimeId: 'time1', isAvailable: true },
+        { eventDateId: 'date1', eventTimeId: 'time2', isAvailable: true },
+        { eventDateId: 'date2', eventTimeId: 'time1', isAvailable: true },
+      ]);
+    });
+
+    test('空のFormDataを処理する', () => {
+      const formData = new FormData();
+
+      const votes = extractVotesFromFormData(formData);
+
+      expect(votes).toHaveLength(0);
+    });
+
+    test('投票以外のフィールドを無視する', () => {
+      const formData = new FormData();
+      formData.set('date1__time1', 'on');
+      formData.set('dateLabel_date1', '2023-10-01');
+      formData.set('timeLabel_time1', '09:00-10:00');
+      formData.set('participantName', 'John');
+
+      const votes = extractVotesFromFormData(formData);
+
+      expect(votes).toHaveLength(1);
+      expect(votes[0]).toEqual({
+        eventDateId: 'date1',
+        eventTimeId: 'time1',
+        isAvailable: true
+      });
     });
   });
 });

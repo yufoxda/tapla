@@ -287,22 +287,37 @@ export function createUserAvailabilityPatternsFromVotes(
   return patterns;
 }
 
-/** * FormDataから投票データを抽出し、時間範囲を結合してユーザーの可用性パターンを作成する
+/** * FormDataからdateLabelsとtimeLabelsを抽出する関数
  * @param formData - フォームデータ
- * @param userId - ユーザーID
- * @param dateLabels - 日付ラベルのマップ (event_date_id -> dateLabel)
- * @param timeLabels - 時刻ラベルのマップ (event_time_id -> timeLabel)
- * @returns 作成されたユーザー可用性パターンの配列
+ * @returns { dateLabels: Map, timeLabels: Map }
  */
-export function createUserAvailabilityPatternsFromFormData(
-  formData: FormData,
-  userId: string,
-  dateLabels: Map<string, string>,
-  timeLabels: Map<string, string>
-): UserAvailabilityPattern[] {
+export function extractLabelsFromFormData(formData: FormData): {
+  dateLabels: Map<string, string>;
+  timeLabels: Map<string, string>;
+} {
+  const dateLabels = new Map<string, string>();
+  const timeLabels = new Map<string, string>();
+  
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith('dateLabel_') && typeof value === 'string') {
+      const dateId = key.replace('dateLabel_', '');
+      dateLabels.set(dateId, value);
+    } else if (key.startsWith('timeLabel_') && typeof value === 'string') {
+      const timeId = key.replace('timeLabel_', '');
+      timeLabels.set(timeId, value);
+    }
+  }
+  
+  return { dateLabels, timeLabels };
+}
+
+/** * FormDataから投票データを抽出する関数
+ * @param formData - フォームデータ
+ * @returns 投票データの配列
+ */
+export function extractVotesFromFormData(formData: FormData): VoteData[] {
   const votes: VoteData[] = [];
   
-  // FormDataから投票データを抽出
   for (const [key, value] of formData.entries()) {
     if (key.includes('__') && value === 'on') {
       const [dateId, timeId] = key.split('__');
@@ -314,11 +329,24 @@ export function createUserAvailabilityPatternsFromFormData(
     }
   }
   
-  // 投票データから可用性パターンを作成
-  const patterns = createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
+  return votes;
+}
+
+/** * FormDataから投票データを抽出し、時間範囲を結合してユーザーの可用性パターンを作成する
+ * @param formData - フォームデータ
+ * @param userId - ユーザーID
+ * @returns 作成されたユーザー可用性パターンの配列
+ */
+export function createUserAvailabilityPatternsFromFormData(
+  formData: FormData,
+  userId: string
+): UserAvailabilityPattern[] {
+  // FormDataからラベルと投票データを抽出
+  const { dateLabels, timeLabels } = extractLabelsFromFormData(formData);
+  const votes = extractVotesFromFormData(formData);
   
-  // 既にuser_idが設定されているのでそのまま返す
-  return patterns;
+  // 投票データから可用性パターンを作成
+  return createUserAvailabilityPatternsFromVotes(votes, dateLabels, timeLabels, userId);
 }
 
 /** * 投票データから時間範囲配列を作成する
