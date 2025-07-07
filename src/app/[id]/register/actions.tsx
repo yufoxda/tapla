@@ -3,9 +3,10 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getuser } from '@/app/actions';
-import { createUserAvailabilityPatternsFromFormData } from '@/utils/format/userTimes';
+import { createUserAvailabilityPatternsFromFormData, extractVotesFromFormData } from '@/utils/format/userTimes';
 
 export async function submitEventVote(formData: FormData) {
+    
     const supabase = await createClient();
 
     const eventId = formData.get('eventId') as string;
@@ -34,19 +35,14 @@ export async function submitEventVote(formData: FormData) {
         }
 
         // 2. 投票データを収集
-        const votes = [];
-        for (const [key, value] of formData.entries()) {
-            if (key.includes('__') && value === 'on') { // __ で分割
-                const [dateId, timeId] = key.split('__');
-                votes.push({
-                    user_id: user.id,
-                    event_id: eventId,
-                    event_date_id: dateId,
-                    event_time_id: timeId,
-                    is_available: true
-                });
-            }
-        }
+        const voteData = extractVotesFromFormData(formData);
+        const votes = voteData.map(vote => ({
+            user_id: user.id,
+            event_id: eventId,
+            event_date_id: vote.eventDateId,
+            event_time_id: vote.eventTimeId,
+            is_available: vote.isAvailable
+        }));
 
         // 3. 投票データを一括保存
         if (votes.length > 0) {
