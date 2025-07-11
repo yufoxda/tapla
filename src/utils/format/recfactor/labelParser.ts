@@ -131,7 +131,7 @@ export function addEndTimesToParsedTimes(
       const endTime = calculateEndTime(parsedTime.start, estimatedInterval);
       return {
         ...parsedTime,
-        endTime
+        end: endTime
       };
     }
     

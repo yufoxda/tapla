@@ -60,12 +60,36 @@ export function formatUserAvailability(
 
     const userAvailability = mergeTimeRanges(userVoteData);
 
-    //todo: 要確認
-    return userAvailability.map((vote) => ({
-        userId: user_id,
-        startTImeStamp: vote.date.toISOString(),
-        endTimeStamp: new Date(vote.date.getTime() + 24 * 60 * 60 * 1000).toISOString(), // 翌日の同時刻
-    }));
+    // 各日付と時間範囲の組み合わせでユーザー利用可能時間を生成
+    const result: UserAvailabilityPattern[] = [];
+    
+    userAvailability.forEach((vote) => {
+        vote.time_ranges.forEach((timeRange) => {
+            // 日付に時間を設定したタイムスタンプを作成
+            const startDate = new Date(vote.date);
+            const endDate = new Date(vote.date);
+            
+            // 時間を設定
+            const [startHour, startMinute] = timeRange.start.split(':').map(Number);
+            const [endHour, endMinute] = timeRange.end.split(':').map(Number);
+            
+            startDate.setHours(startHour, startMinute, 0, 0);
+            endDate.setHours(endHour, endMinute, 0, 0);
+            
+            // 終了時間が開始時間より前の場合（日をまたぐ場合）、翌日に設定
+            if (endDate <= startDate) {
+                endDate.setDate(endDate.getDate() + 1);
+            }
+            
+            result.push({
+                userId: user_id,
+                startTImeStamp: startDate.toISOString(),
+                endTimeStamp: endDate.toISOString(),
+            });
+        });
+    });
+    
+    return result;
 }
 
 
