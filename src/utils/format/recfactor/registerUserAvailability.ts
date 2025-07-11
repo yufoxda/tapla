@@ -1,8 +1,6 @@
 import { formatUserAvailability } from "./formatUserAvailability"
 import { createClient } from '@/utils/supabase/server'
 import { parseFormdata } from '@/utils/format/voteFormParser';
-import { format } from "path";
-
 export async function registerUserAvailability(
     formData: FormData,
 ){
