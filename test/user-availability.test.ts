@@ -1,6 +1,6 @@
 import { createUserAvailableRangePattern } from '@/app/[id]/register/user-availability';
 import { parseFormdata } from '@/utils/format/voteFormParser';
-import { processLabels } from '@/utils/format/labelparser';
+import { processLabels } from '@/utils/format/labelParser';
 import { parseTimeLabel, addEndTimesToParsedTimes } from '@/utils/format/judgeLabel';
 import { createClient } from '@/utils/supabase/server';
 

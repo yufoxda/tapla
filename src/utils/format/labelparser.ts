@@ -13,6 +13,45 @@ export interface ProcessedLabelData {
     is_available: boolean[][];
 }
 
+export interface TimeRange{
+    start: string;  
+    end: string;
+    is_available: boolean;
+}
+
+/**
+ * ラベルデータを処理してstart-end形式に変換する関数
+ * @param timeLabels - 元のラベルデータ
+ * @returns 処理済みのラベルデータ{ start: string, end: string, is_available: boolean | null }[]
+ * @description
+ * 時刻ラベルを解析し、start-end形式に変換します。
+ * 各ラベルは、開始時刻と終了時刻を持つオブジェクトに変換されます。
+ * 解析できないラベルは削除されます。
+ * 想定しているパターンはparseTimeLabelで定義されています。
+ */
+export function createTimeRangeFromLabels(
+    timeLabels: string[],
+): TimeRange[] {
+    // todo: 型を修正
+    const timeRanges: ParsedTime[] = [];
+
+    for (const label of timeLabels) {
+        const TimeRangeLabel = parseTimeLabel(label);
+
+        if( TimeRangeLabel.isTimeRecognized) {
+            timeRanges.push({
+                startTime: TimeRangeLabel.startTime || '',
+                endTime: TimeRangeLabel.endTime || '',
+                isTimeRecognized: TimeRangeLabel.isTimeRecognized
+            });
+        }
+    }
+
+    const TimeRangeLabelsWithEndTimes = addEndTimesToParsedTimes(timeRanges);
+    
+    return timeRanges;
+}
+
 /**
  * ラベルデータを処理してstart-end形式に変換する関数
  * @param labelData - 元のラベルデータ
