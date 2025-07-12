@@ -1,20 +1,20 @@
 import { parseTimeLabel } from './judgeLabel';
 import { timeStringToMinutes, minutesToTimeString } from './time';
-
+import { type ParsedTime } from './judgeLabel';
 export interface TimeRange{
     start: string;  
     end: string;
-    is_available: boolean;
+    is_recognized: boolean;
 }
 
 /**
  * ラベルデータを処理してstart-end形式に変換する関数
  * @param timeLabels - 元のラベルデータ
- * @returns 処理済みのラベルデータ{ start: string, end: string, is_available: boolean | null }[]
+ * @returns 処理済みのラベルデータ{ start: string, end: string, is_recognized: boolean }[]
  * @description
  * 時刻ラベルを解析し、start-end形式に変換します。
  * 各ラベルは、開始時刻と終了時刻を持つオブジェクトに変換されます。
- * 解析できないラベルは削除されます。
+ * 認識できないラベルも含まれますが、is_recognizedフラグで判別できます。
  * 想定しているパターンはparseTimeLabelで定義されています。
  */
 export function createTimeRangeFromLabels(
@@ -25,13 +25,13 @@ export function createTimeRangeFromLabels(
     for (const label of timeLabels) {
         const TimeRangeLabel = parseTimeLabel(label);
 
-        if( TimeRangeLabel.isTimeRecognized) {
-            timeRanges.push({
+        timeRanges.push(
+            {
                 start: TimeRangeLabel.startTime || '',
                 end: TimeRangeLabel.endTime || '',
-                is_available:false // is_availableはここでは設定しない
-            });
-        }
+                is_recognized: TimeRangeLabel.isTimeRecognized
+            }
+        );
     }
 
     const TimeRangeLabelsWithEndTimes = addEndTimesToParsedTimes(timeRanges);
@@ -121,21 +121,20 @@ export function addEndTimesToParsedTimes(
   
   // 各要素を処理
   return parsedTimes.map(parsedTime => {
-    // 既にendTimeがある場合はそのまま返す
-    if (parsedTime.end) {
+    // 認識されていない時刻の場合はそのまま返す
+    if (parsedTime.is_recognized === false) {
       return { ...parsedTime };
     }
     
-    // 単一時刻の場合にendTimeを計算
-    if (parsedTime.end === null || parsedTime.end === '') {
-      const endTime = calculateEndTime(parsedTime.start, estimatedInterval);
-      return {
-        ...parsedTime,
-        end: endTime
-      };
+    // 既にendTimeがある場合はそのまま返す
+    if (parsedTime.end && parsedTime.end !== '') {
+      return { ...parsedTime };
     }
     
-    // 認識されていない時刻の場合はそのまま返す
-    return { ...parsedTime };
+    const endTime = calculateEndTime(parsedTime.start ?? '', estimatedInterval);
+    return {
+      ...parsedTime,
+      end: endTime
+    };
   });
 }

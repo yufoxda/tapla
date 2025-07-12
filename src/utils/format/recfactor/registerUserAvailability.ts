@@ -1,18 +1,21 @@
 import { formatUserAvailability } from "./formatUserAvailability"
 import { createClient } from '@/utils/supabase/server'
 import { parseFormdata } from '@/utils/format/voteFormParser';
+import { getuser } from '@/app/actions';
 import { format } from "path";
 
 export async function registerUserAvailability(
     formData: FormData,
 ){
     const supabase = await createClient();
+    const registerUser = await getuser();
     const { votes, eventId } = parseFormdata(formData);
 
     const registerData = formatUserAvailability(
-        votes.date_ids[0], // ユーザーIDは最初のdate_id 
+        registerUser?.id ?? null,
         votes.date_labels,
-        votes.time_labels
+        votes.time_labels,
+        votes.is_available
     );
 
     const data = registerData.map((vote) => ({

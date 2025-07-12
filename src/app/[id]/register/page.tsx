@@ -44,7 +44,7 @@ export default async function RegisterPage({ params }: { params: { id: string } 
           <input 
             key={`date-label-${date.id}`}
             type="hidden" 
-            name={`${date.id}__label`} 
+            name={`date-label-${date.id}`} 
             value={date.date_label} 
           />
         ))}
@@ -54,7 +54,7 @@ export default async function RegisterPage({ params }: { params: { id: string } 
           <input 
             key={`time-label-${time.id}`}
             type="hidden" 
-            name={`${time.id}__label`} 
+            name={`time-label-${time.id}`} 
             value={time.time_label} 
           />
         ))}

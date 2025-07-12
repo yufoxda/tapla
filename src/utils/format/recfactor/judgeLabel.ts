@@ -1,3 +1,4 @@
+import { TimeRange } from "./labelParser";
 export interface ParsedDate {
   date: Date | null;
   isDateRecognized: boolean;
@@ -22,7 +23,7 @@ export function parseDateLabel(dateLabel: string): ParsedDate {
     return { date: null, isDateRecognized: false };
   }
   
-  const regex = /(?:(\d{4})[-\/年])?(\d{1,2})[-\/月](\d{1,2})日?/;// 年付き・年なし
+  const regex = /(?:(\d{4})[-\/年])?(\d{1,2})[-\/月]?(\d{1,2})日?/;// 年付き・年なし
   const match = dateLabel.match(regex);
 
 // match[0] = "2024年12月25日"  // マッチした全体
