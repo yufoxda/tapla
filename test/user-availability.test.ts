@@ -6,7 +6,7 @@ import { createClient } from '@/utils/supabase/server';
 
 // モックの設定
 jest.mock('@/utils/format/voteFormParser');
-jest.mock('@/utils/format/labelparser');
+jest.mock('@/utils/format/labelParser');
 jest.mock('@/utils/format/judgeLabel');
 jest.mock('@/utils/supabase/server');
 
@@ -51,11 +51,11 @@ describe('user-availability', () => {
       eventId: 'test-event-id'
     });
 
-    mockProcessLabels.mockReturnValue({
+    mockProcessLabels.mockImplementation(() => ({
       date_labels: ['2024-07-08', '2024-07-09'],
       time_labels: ['09:00-10:00', '10:00-11:00'],
       is_available: [[true, false], [false, true]]
-    });
+    }));
 
     mockParseTimeLabel
       .mockReturnValueOnce({ startTime: '09:00', endTime: null, isTimeRecognized: true })

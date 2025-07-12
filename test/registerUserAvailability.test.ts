@@ -24,6 +24,9 @@ describe('registerUserAvailability', () => {
 
     // Supabaseクライアントのモック
     mockSupabase = {
+      auth: {
+        getUser: jest.fn()
+      },
       from: jest.fn().mockReturnThis(),
       insert: jest.fn().mockReturnThis()
     };
@@ -71,6 +74,12 @@ describe('registerUserAvailability', () => {
   });
 
   test('正常にユーザーの利用可能時間を登録する', async () => {
+    // 認証成功のモック
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: { id: 'test-user-id' } },
+      error: null
+    });
+
     await registerUserAvailability(mockFormData);
 
     // フォームデータの解析が呼ばれることを確認
@@ -78,9 +87,10 @@ describe('registerUserAvailability', () => {
 
     // formatUserAvailabilityが正しい引数で呼ばれることを確認
     expect(mockFormatUserAvailability).toHaveBeenCalledWith(
-      'user-123', // votes.date_ids[0]
+      'test-user-id', // 認証されたユーザーのID
       ['2024-07-08', '2024-07-09'], // votes.date_labels
-      ['09:00', '10:00'] // votes.time_labels
+      ['09:00', '10:00'], // votes.time_labels
+      [[true, false], [false, true]] // votes.is_available
     );
 
     // Supabaseクライアントが作成されることを確認
@@ -103,6 +113,12 @@ describe('registerUserAvailability', () => {
   });
 
   test('データが空の場合は挿入処理をスキップする', async () => {
+    // 認証成功のモック
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: { id: 'test-user-id' } },
+      error: null
+    });
+    
     mockFormatUserAvailability.mockReturnValue([]);
 
     await registerUserAvailability(mockFormData);
@@ -116,6 +132,12 @@ describe('registerUserAvailability', () => {
   });
 
   test('データベースエラー時に例外をスローする', async () => {
+    // 認証成功のモック
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: { id: 'test-user-id' } },
+      error: null
+    });
+    
     const mockError = new Error('Database connection failed');
     mockSupabase.from.mockReturnValue({
       insert: jest.fn().mockResolvedValue({ error: mockError })
@@ -133,6 +155,12 @@ describe('registerUserAvailability', () => {
   });
 
   test('複数のユーザー可用性データを正しく処理する', async () => {
+    // 認証成功のモック
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: { id: 'test-user-id' } },
+      error: null
+    });
+    
     mockFormatUserAvailability.mockReturnValue([
       {
         userId: 'user-123',
@@ -173,6 +201,12 @@ describe('registerUserAvailability', () => {
   });
 
   test('フォームデータが不正な場合の処理', async () => {
+    // 認証成功のモック
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: { id: 'test-user-id' } },
+      error: null
+    });
+    
     mockParseFormdata.mockReturnValue({
       votes: {
         date_ids: [], // 空の配列
@@ -188,9 +222,28 @@ describe('registerUserAvailability', () => {
     await registerUserAvailability(mockFormData);
 
     expect(mockFormatUserAvailability).toHaveBeenCalledWith(
-      undefined, // date_ids[0]が存在しない
+      'test-user-id', // ユーザーIDが正しく渡される
       ['2024-07-08'],
-      ['09:00']
+      ['09:00'],
+      []
+    );
+  });
+
+  test('認証エラー時に例外をスローする', async () => {
+    // 認証失敗のモック
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: null },
+      error: new Error('認証に失敗しました')
+    });
+
+    await expect(registerUserAvailability(mockFormData)).rejects.toThrow(
+      'ユーザー認証に失敗しました'
+    );
+
+    // エラーがログに出力されることを確認
+    expect(console.error).toHaveBeenCalledWith(
+      'Error fetching user:',
+      expect.any(Error)
     );
   });
 });
