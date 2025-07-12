@@ -39,16 +39,16 @@ describe('labelParser', () => {
       expect(result[0]).toEqual({
         start: '09:00',
         end: '10:00',
-        is_available: false
+        is_recognized: true
       });
       expect(result[1]).toEqual({
         start: '10:00',
         end: '11:00', // addEndTimesToParsedTimesによって計算される
-        is_available: false
+        is_recognized: true
       });
     });
 
-    test('認識できない時刻ラベルをスキップする', () => {
+    test('認識できない時刻ラベルも含まれる', () => {
       const timeLabels = ['invalid-time', '09:00'];
 
       mockParseTimeLabel
@@ -65,11 +65,16 @@ describe('labelParser', () => {
 
       const result = createTimeRangeFromLabels(timeLabels);
 
-      expect(result).toHaveLength(1);
+      expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
+        start: '',
+        end: '',
+        is_recognized: false
+      });
+      expect(result[1]).toEqual({
         start: '09:00',
         end: '10:00',
-        is_available: false
+        is_recognized: true
       });
     });
 
@@ -108,9 +113,9 @@ describe('labelParser', () => {
   describe('addEndTimesToParsedTimes', () => {
     test('単一時刻にendTimeを追加する（デフォルト間隔）', () => {
       const parsedTimes: TimeRange[] = [
-        { start: '09:00', end: '', is_available: false },
-        { start: '10:00', end: '', is_available: false },
-        { start: '11:00', end: '', is_available: false }
+        { start: '09:00', end: '', is_recognized: true },
+        { start: '10:00', end: '', is_recognized: true },
+        { start: '11:00', end: '', is_recognized: true }
       ];
 
       const result = addEndTimesToParsedTimes(parsedTimes);
@@ -119,25 +124,25 @@ describe('labelParser', () => {
       expect(result[0]).toEqual({
         start: '09:00',
         end: '10:00', // 60分後
-        is_available: false
+        is_recognized: true
       });
       expect(result[1]).toEqual({
         start: '10:00',
         end: '11:00',
-        is_available: false
+        is_recognized: true
       });
       expect(result[2]).toEqual({
         start: '11:00',
         end: '12:00',
-        is_available: false
+        is_recognized: true
       });
     });
 
     test('時間間隔を推定してendTimeを追加する', () => {
       const parsedTimes: TimeRange[] = [
-        { start: '09:00', end: '', is_available: false },
-        { start: '09:30', end: '', is_available: false },
-        { start: '10:00', end: '', is_available: false }
+        { start: '09:00', end: '', is_recognized: true },
+        { start: '09:30', end: '', is_recognized: true },
+        { start: '10:00', end: '', is_recognized: true }
       ];
 
       const result = addEndTimesToParsedTimes(parsedTimes);
@@ -146,23 +151,23 @@ describe('labelParser', () => {
       expect(result[0]).toEqual({
         start: '09:00',
         end: '09:30',
-        is_available: false
+        is_recognized: true
       });
       expect(result[1]).toEqual({
         start: '09:30',
         end: '10:00',
-        is_available: false
+        is_recognized: true
       });
       expect(result[2]).toEqual({
         start: '10:00',
         end: '10:30',
-        is_available: false
+        is_recognized: true
       });
     });
 
     test('カスタムデフォルト間隔を使用する', () => {
       const parsedTimes: TimeRange[] = [
-        { start: '09:00', end: '', is_available: false }
+        { start: '09:00', end: '', is_recognized: true }
       ];
 
       const result = addEndTimesToParsedTimes(parsedTimes, 90); // 90分間隔
@@ -170,7 +175,7 @@ describe('labelParser', () => {
       expect(result[0]).toEqual({
         start: '09:00',
         end: '10:30',
-        is_available: false
+        is_recognized: true
       });
     });
 
@@ -185,8 +190,8 @@ describe('labelParser', () => {
 
     test('既にendTimeがある時間範囲はそのまま保持する', () => {
       const parsedTimes: TimeRange[] = [
-        { start: '09:00', end: '', is_available: false },
-        { start: '10:00', end: '11:00', is_available: false }
+        { start: '09:00', end: '', is_recognized: true },
+        { start: '10:00', end: '11:00', is_recognized: true }
       ];
 
       const result = addEndTimesToParsedTimes(parsedTimes);
@@ -194,12 +199,32 @@ describe('labelParser', () => {
       expect(result[0]).toEqual({
         start: '09:00',
         end: '10:00',
-        is_available: false
+        is_recognized: true
       });
       expect(result[1]).toEqual({
         start: '10:00',
         end: '11:00', // 既存のendTimeを保持
-        is_available: false
+        is_recognized: true
+      });
+    });
+
+    test('認識されていない時刻はそのまま保持する', () => {
+      const parsedTimes: TimeRange[] = [
+        { start: '', end: '', is_recognized: false },
+        { start: '09:00', end: '', is_recognized: true }
+      ];
+
+      const result = addEndTimesToParsedTimes(parsedTimes);
+
+      expect(result[0]).toEqual({
+        start: '',
+        end: '',
+        is_recognized: false // そのまま保持
+      });
+      expect(result[1]).toEqual({
+        start: '09:00',
+        end: '10:00',
+        is_recognized: true
       });
     });
   });
