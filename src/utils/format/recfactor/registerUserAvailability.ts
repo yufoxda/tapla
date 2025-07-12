@@ -1,18 +1,23 @@
 import { formatUserAvailability } from "./formatUserAvailability"
 import { createClient } from '@/utils/supabase/server'
 import { parseFormdata } from '@/utils/format/voteFormParser';
-import { getuser } from '@/app/actions';
 
 
 export async function registerUserAvailability(
     formData: FormData,
 ){
     const supabase = await createClient();
-    const registerUser = await getuser();
+    const { data: user, error } = await supabase.auth.getUser();
+    
+    if (error) {
+        console.error('Error fetching user:', error);
+        throw new Error('ユーザー認証に失敗しました');
+    }
+    
     const { votes, eventId } = parseFormdata(formData);
 
     const registerData = formatUserAvailability(
-        registerUser?.id ?? null,
+        user.user?.id ?? null,
         votes.date_labels,
         votes.time_labels,
         votes.is_available
