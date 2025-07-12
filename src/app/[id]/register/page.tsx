@@ -38,12 +38,35 @@ export default async function RegisterPage({ params }: { params: { id: string } 
         </div>
 
         <h3>参加可能な日時を選択してください</h3>
+        
+        {/* 日付ラベルのhidden input */}
+        {dates.map((date) => (
+          <input 
+            key={`date-label-${date.id}`}
+            type="hidden" 
+            name={`date-label-${date.id}`} 
+            value={date.date_label} 
+          />
+        ))}
+        
+        {/* 時刻ラベルのhidden input */}
+        {times.map((time) => (
+          <input 
+            key={`time-label-${time.id}`}
+            type="hidden" 
+            name={`time-label-${time.id}`} 
+            value={time.time_label} 
+          />
+        ))}
+
         <table>
           <thead>
             <tr>
               <th>時刻</th>
               {dates.map((date) => (
-                <th key={date.id}>{date.date_label}</th>
+                <th key={date.id}>
+                  {date.date_label}
+                </th>
               ))}
             </tr>
           </thead>
@@ -54,7 +77,7 @@ export default async function RegisterPage({ params }: { params: { id: string } 
                   {time.time_label}
                 </td>
                 {dates.map((date: any) => {
-                  const key = `${date.id}__${time.id}`; // __ を区切り文字として使用
+                  const key = `${date.id}__${time.id}`;
                   return (
                     <td key={key}>
                       <input type="checkbox" name={key} />
